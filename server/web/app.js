@@ -14,6 +14,70 @@ let contactsRefreshInterval = null;
 let translations = {};
 let currentLang = 'en';
 
+// Incoming/outgoing sounds and incoming call state
+let incomingCall = null;
+const ringtoneEl = document.getElementById('ringtone');
+const ringbackEl = document.getElementById('ringback');
+
+// Theme
+function initTheme() {
+  const saved = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  applyTheme(theme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  if (themeBtn) {
+    themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    themeBtn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    themeBtn.title = theme === 'dark' ? 'Light theme' : 'Dark theme';
+  }
+  // update meta theme-color for PWA
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', theme === 'dark' ? '#121212' : '#2196F3');
+  }
+}
+
+// Sounds helpers
+async function playRingtone() {
+  if (!ringtoneEl) return;
+  try {
+    ringtoneEl.currentTime = 0;
+    await ringtoneEl.play();
+  } catch (e) {
+    console.warn('[AUDIO] Unable to play ringtone:', e.message);
+  }
+}
+function stopRingtone() {
+  if (!ringtoneEl) return;
+  try {
+    ringtoneEl.pause();
+    ringtoneEl.currentTime = 0;
+  } catch (_) {}
+}
+
+async function playRingback() {
+  if (!ringbackEl) return;
+  try {
+    ringbackEl.currentTime = 0;
+    await ringbackEl.play();
+  } catch (e) {
+    console.warn('[AUDIO] Unable to play ringback:', e.message);
+  }
+}
+function stopRingback() {
+  if (!ringbackEl) return;
+  try {
+    ringbackEl.pause();
+    ringbackEl.currentTime = 0;
+  } catch (_) {}
+}
+
 // Detect browser language
 function detectLanguage() {
     const browserLang = navigator.language || navigator.userLanguage;
@@ -183,7 +247,7 @@ async function loadTURNConfig() {
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
     await initServiceWorker();
-
+    initTheme();
     // Load translations first - must complete before any UI operations
     const savedLang = localStorage.getItem('preferredLanguage') || detectLanguage();
     try {
@@ -374,6 +438,66 @@ function setupEventListeners() {
             document.getElementById('add-contact-modal').classList.add('active');
         });
     }
+
+     // Refresh app (полный перезапуск как в браузере)
+     const refreshBtn = document.getElementById('refresh-app-btn');
+     if (refreshBtn) {
+         refreshBtn.addEventListener('click', () => {
+             window.location.reload();
+         });
+     }
+ 
+     // Theme toggle
+     const themeToggleBtn = document.getElementById('theme-toggle-btn');
+     if (themeToggleBtn) {
+         themeToggleBtn.addEventListener('click', () => {
+             const current = document.documentElement.getAttribute('data-theme') || 'light';
+             applyTheme(current === 'dark' ? 'light' : 'dark');
+         });
+     }
+ 
+     // Incoming call modal: accept/reject
+     const acceptBtn = document.getElementById('accept-call-btn');
+     const rejectBtn = document.getElementById('reject-call-btn');
+     if (acceptBtn) {
+         acceptBtn.addEventListener('click', () => {
+             if (!incomingCall) return;
+             // Останавливаем рингтон, гасим модалку, подтверждаем
+             stopRingtone();
+             if (navigator.vibrate) navigator.vibrate(0);
+             document.getElementById('incoming-call-modal')?.classList.remove('active');
+ 
+             // Отправляем call-accept
+             sendWebSocketMessage({
+                 type: 'call-accept',
+                 to: incomingCall.from
+             });
+ 
+             // Переходим на экран звонка и ждём offer
+             currentCall = { contactId: incomingCall.from, callType: incomingCall.call_type };
+             updateCallContactName(incomingCall.caller_username || '');
+             updateCallStatus(t('waiting_for_offer'));
+             showScreen('call-screen');
+ 
+             incomingCall = null;
+         });
+     }
+     if (rejectBtn) {
+         rejectBtn.addEventListener('click', () => {
+             if (!incomingCall) return;
+             stopRingtone();
+             if (navigator.vibrate) navigator.vibrate(0);
+             document.getElementById('incoming-call-modal')?.classList.remove('active');
+ 
+             // Отправляем call-reject
+             sendWebSocketMessage({
+                 type: 'call-reject',
+                 to: incomingCall.from
+             });
+ 
+             incomingCall = null;
+         });
+     }
 
     document.getElementById('add-contact-form').addEventListener('submit', handleAddContact);
     document.getElementById('cancel-contact-btn').addEventListener('click', () => {
@@ -1200,6 +1324,7 @@ async function initiateCall(contactUserId, contactUserIdDup, callType, contactNa
 
         // Notification sent, wait for receiver to connect
         updateCallStatus(t('notification_sent_waiting'));
+        playRingback();
 
         // Set up currentCall to track the call state
         currentCall = {
@@ -1485,6 +1610,7 @@ function handleWebSocketMessage(message) {
             break;
         case 'call-accept':
             console.log('[WS] Call accepted by:', message.from);
+            stopRingback();
             // Receiver accepted the call, start WebRTC connection
             if (currentCall && currentCall.contactId === message.from) {
                 console.log('[WS] Receiver accepted, starting WebRTC call...');
@@ -1499,12 +1625,14 @@ function handleWebSocketMessage(message) {
                 }
             }
             break;
-        case 'call-reject':
-            console.log('[WS] Call rejected by:', message.from);
-            endCall();
-            break;
+            case 'call-reject':
+                console.log('[WS] Call rejected by:', message.from);
+                stopRingback();
+                endCall();
+                break;
         case 'call-end':
             console.log('[WS] Call ended by:', message.from);
+            stopRingback();
             if (currentCall && currentCall.contactId === message.from) {
                 updateCallStatus(t('call_ended'));
                 setTimeout(() => {
@@ -1545,26 +1673,29 @@ function handleWebSocketMessage(message) {
 async function handleIncomingCall(message) {
     console.log('Incoming call from:', message.data.caller_username);
 
-    // Show call screen immediately
-    currentCall = {
-        contactId: message.from,
-        callType: message.call_type
+    incomingCall = {
+        from: message.from,
+        call_type: message.call_type,
+        caller_username: message.data.caller_username
     };
-    updateCallContactName(message.data.caller_username);
-    updateCallStatus(t('incoming_call'));
-    showScreen('call-screen');
 
-    // Auto-accept call
-    console.log('Auto-accepting call...');
+    // Заполняем модалку
+    const nameEl = document.getElementById('incoming-caller-name');
+    const typeEl = document.getElementById('incoming-call-type');
+    if (nameEl) nameEl.textContent = incomingCall.caller_username || 'Incoming call';
+    if (typeEl) typeEl.textContent = incomingCall.call_type === 'video' ? 'Video call' : 'Audio call';
 
-    // Send call-accept message
-    sendWebSocketMessage({
-        type: 'call-accept',
-        to: message.from
-    });
+    // Показываем модалку
+    document.getElementById('incoming-call-modal')?.classList.add('active');
 
-    // Wait for offer
-    updateCallStatus(t('waiting_for_offer'));
+    // Проигрываем рингтон и вибрацию
+    await playRingtone();
+    if (navigator.vibrate) {
+        // паттерн: 200ms вибрации, 100ms пауза — повторится системой только 1 раз
+        navigator.vibrate([200, 100, 200]);
+    }
+
+    // Никакого автоответа — ждём действий пользователя
 }
 
 // Handle offer
@@ -1733,6 +1864,7 @@ async function handleOffer(message) {
                 endCall();
             } else if (state === 'connected') {
                 console.log('[OFFER] Connection established successfully');
+                stopRingback();
                 // Ensure remote video is playing
                 const remoteVideo = document.getElementById('remote-video');
                 if (remoteVideo.srcObject) {
@@ -2009,6 +2141,11 @@ function makeLocalVideoDraggable() {
 
 // End call
 function endCall() {
+
+    // Stop any sounds
+    stopRingback();
+    stopRingtone();
+    if (navigator.vibrate) navigator.vibrate(0);
     // Notify the other party that the call is ending
     if (currentCall && currentCall.contactId && wsConnection && wsConnection.readyState === WebSocket.OPEN) {
         console.log('Sending call-end message to:', currentCall.contactId);

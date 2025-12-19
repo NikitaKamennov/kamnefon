@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Family Callbook">
-    <title>Family Callbook - Video & Audio Calling</title>
+    <title>Камнефон про лайт экстра +</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
@@ -32,7 +32,7 @@
         <!-- Login Screen -->
         <div id="login-screen" class="screen active">
             <div class="container">
-                <h1 data-i18n="app_name">Family Callbook</h1>
+                <h1 data-i18n="app_name">Камнефон</h1>
                 <p class="subtitle" data-i18n="app_subtitle">Video & Audio Calling App</p>
 
                 <form id="login-form">
@@ -67,9 +67,15 @@
         <!-- Main App Screen -->
         <div id="app-screen" class="screen">
             <header>
-                <h2 data-i18n="app_name">Family Callbook</h2>
+                <h2 data-i18n="app_name">Камнефон </h2>
+                <!-- Переключатель темы -->
+                <button
+                  id="theme-toggle-btn"
+                  class="btn-icon"
+                  title="Toggle theme"
+                  aria-label="Toggle theme">🌙</button>
                 <button id="menu-toggle" class="menu-toggle" aria-label="Menu">☰</button>
-            </header>
+              </header>
             
             <!-- Mobile Menu Overlay -->
             <div id="mobile-menu-overlay" class="mobile-menu-overlay"></div>
@@ -128,8 +134,10 @@
                 <section id="contacts-section">
                     <div class="section-header">
                         <h3 data-i18n="contacts">Contacts</h3>
+                        <!-- Кнопка «Обновить» -->
+                        <button id="refresh-app-btn" class="btn-icon" title="Refresh">↻</button>
                         <button id="add-contact-btn" class="btn-icon">+</button>
-                    </div>
+                      </div>
                     
                     <div id="contacts-list" class="contacts-list"></div>
                     
@@ -169,6 +177,23 @@
                         </div>
                     </div>
                 </div>
+                <!-- Incoming Call Modal -->
+<div id="incoming-call-modal" class="modal">
+    <div class="modal-content incoming">
+      <h3 id="incoming-caller-name" data-i18n="incoming_call">Incoming call</h3>
+      <p id="incoming-call-type"></p>
+      <div class="modal-actions incoming-actions">
+        <button
+          id="accept-call-btn"
+          class="btn call-accept"
+          title="Answer">📞</button>
+        <button
+          id="reject-call-btn"
+          class="btn call-reject"
+          title="Decline">🛑</button>
+      </div>
+    </div>
+  </div>
             </main>
         </div>
 
@@ -201,7 +226,9 @@
         </div>
     </div>
 
-    <script src="/app.js"></script>
+    <script defer src="/app.js"></script>
+    <audio id="ringtone" preload="auto" loop src="/ringtone.mp3"></audio>
+<audio id="ringback" preload="auto" loop src="/ringback.mp3"></audio>
 </body>
 
 </html>
