@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -23,7 +23,6 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
   </head>
-
   <body>
     <!-- Loading Spinner -->
     <div id="loading-spinner" class="loading-spinner hidden">
@@ -39,7 +38,6 @@
           <p class="subtitle" data-i18n="app_subtitle">
             Камнефон про лайт экстра +
           </p>
-
           <form id="login-form">
             <div class="form-group">
               <input
@@ -57,7 +55,6 @@
               Get Started
             </button>
           </form>
-
           <div id="login-error" class="error-message"></div>
 
           <div class="install-prompt" id="install-prompt" style="display: none">
@@ -180,12 +177,12 @@
             class="prompt-banner"
             style="display: none">
             <div class="prompt-content">
-              <span
-                >🔔
-                <span data-i18n="enable_notifications"
-                  >Enable notifications to receive calls</span
-                ></span
-              >
+              <span>
+                🔔
+                <span data-i18n="enable_notifications">
+                  Enable notifications to receive calls
+                </span>
+              </span>
               <button
                 id="enable-notifications-btn"
                 class="btn btn-primary btn-small"
@@ -202,12 +199,12 @@
             class="prompt-banner"
             style="display: none">
             <div class="prompt-content">
-              <span
-                >📱
-                <span data-i18n="install_app"
-                  >Install this app for a better experience</span
-                ></span
-              >
+              <span>
+                📱
+                <span data-i18n="install_app">
+                  Install this app for a better experience
+                </span>
+              </span>
               <button
                 id="install-app-btn"
                 class="btn btn-primary btn-small"
@@ -223,10 +220,12 @@
             <div class="section-header">
               <h3 data-i18n="contacts">Contacts</h3>
               <!-- Кнопка «Обновить» -->
-              <button id="refresh-app-btn" class="btn-icon" title="Refresh">
-                ↻
-              </button>
-              <button id="add-contact-btn" class="btn-icon">+</button>
+              <div class="section-actions">
+                <button id="refresh-app-btn" class="btn-icon" title="Refresh">
+                  ↻
+                </button>
+                <button id="add-contact-btn" class="btn-icon">+</button>
+              </div>
             </div>
 
             <div id="contacts-list" class="contacts-list"></div>
@@ -302,6 +301,7 @@
               </div>
             </div>
           </div>
+
           <!-- Incoming Call Modal -->
           <div id="incoming-call-modal" class="modal">
             <div class="modal-content incoming">
@@ -325,6 +325,41 @@
               </div>
             </div>
           </div>
+
+          <!-- Contact Card Modal (новое) -->
+          <div id="contact-card-modal" class="modal">
+            <div class="modal-content contact-card">
+              <div class="contact-card-header">
+                <div class="contact-card-avatar" aria-hidden="true">👤</div>
+                <div class="contact-card-meta">
+                  <h3 id="cc-name">Contact Name</h3>
+                  <div class="cc-status">
+                    <span id="cc-online-indicator" class="dot offline"></span>
+                    <span id="cc-status-text">Offline</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="contact-card-actions">
+                <button id="cc-audio-btn" class="action-btn action-primary">
+                  <span class="action-icon">🎤</span>
+                  <span data-i18n="audio_call">Аудиозвонок</span>
+                </button>
+                <button id="cc-video-btn" class="action-btn action-primary">
+                  <span class="action-icon">📹</span>
+                  <span data-i18n="video_call">Видеозвонок</span>
+                </button>
+                <button id="cc-share-btn" class="action-btn action-secondary">
+                  <span class="action-icon">🔗</span>
+                  <span data-i18n="share_invite_link">Поделиться ссылкой</span>
+                </button>
+                <button id="cc-close-btn" class="action-btn action-ghost">
+                  <span class="action-icon">✖</span>
+                  <span data-i18n="close">Закрыть</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </main>
       </div>
 
@@ -339,6 +374,7 @@
           <div class="call-controls">
             <button id="mute-btn" class="btn-icon call-btn">🔇</button>
             <button id="video-toggle-btn" class="btn-icon call-btn">📹</button>
+
             <div class="audio-output-container">
               <button
                 id="audio-output-btn"
@@ -351,6 +387,7 @@
                 <div id="audio-output-list" class="audio-output-list"></div>
               </div>
             </div>
+
             <button id="end-call-btn" class="btn-icon call-btn end-call">
               📞
             </button>
