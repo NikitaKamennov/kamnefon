@@ -14,6 +14,65 @@ let contactsRefreshInterval = null;
 let translations = {};
 let currentLang = "en";
 
+
+// ----- WRAPPER BRIDGE (iframe <-> wrapper) -----
+let wrapperBridgeInitialized = false;
+
+function initWrapperBridge() {
+  if (wrapperBridgeInitialized) return;
+  wrapperBridgeInitialized = true;
+
+  // Принимаем пуш-токен от wrapper и отправляем его на backend
+  window.addEventListener('message', async (ev) => {
+    const data = ev?.data || {};
+    if (data.type === 'push-token' && data.token) {
+      try {
+        // Привязываем FCM-токен устройства к текущему пользователю
+        await fetch(`${API_BASE}/register-device`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify({ token: data.token }),
+        });
+        console.log('[WRAPPER] FCM токен отправлен на сервер');
+      } catch (e) {
+        console.error('[WRAPPER] Не удалось отправить FCM токен:', e);
+      }
+    }
+  });
+}
+
+// Попросить у wrapper пуш-токен (только если мы внутри iframe)
+function requestWrapperPushToken() {
+  if (window.top === window) return; // не в iframe
+  try {
+    window.parent.postMessage({ type: 'request-push-token' }, '*');
+  } catch (e) {
+    // игнорируем
+  }
+}
+
+// Уведомить wrapper о входящем звонке (локальное уведомление в активном состоянии)
+function notifyWrapperIncomingCall({ fromUser, title, body }) {
+  if (window.top === window) return; // не в iframe
+  try {
+    window.parent.postMessage(
+      {
+        type: 'incoming-call',
+        title: title || 'Входящий звонок',
+        body: body || `Звонит: ${fromUser}`,
+        from: fromUser,
+      },
+      '*'
+    );
+  } catch (e) {
+    // игнорируем
+  }
+}
+// ----- /WRAPPER BRIDGE -----
+
 // Incoming/outgoing sounds and incoming call state
 let incomingCall = null;
 const ringtoneEl = document.getElementById("ringtone");
@@ -273,6 +332,7 @@ async function loadTURNConfig() {
 
 // Initialize app
 document.addEventListener("DOMContentLoaded", async () => {
+  initWrapperBridge(); 
   await initServiceWorker();
   initTheme();
   // Load translations first - must complete before any UI operations
@@ -719,6 +779,9 @@ async function handleLogin(e) {
     await loadContacts();
 
     showScreen("app-screen");
+
+    requestWrapperPushToken();
+
     const mobileUsernameEl = document.getElementById("mobile-current-username");
     if (mobileUsernameEl) mobileUsernameEl.textContent = currentUser.username;
 
@@ -874,7 +937,7 @@ async function fetchUserInfo() {
         "Pending call detected, call-screen already shown by handleCallFromNotification"
       );
     }
-
+    requestWrapperPushToken();
     hideLoading();
   } catch (error) {
     console.error("Error fetching user info:", error);
@@ -2066,6 +2129,18 @@ async function handleIncomingCall(message) {
     // паттерн: 200ms вибрации, 100ms пауза — повторится системой только 1 раз
     navigator.vibrate([200, 100, 200]);
   }
+
+  await playRingtone();
+if (navigator.vibrate) {
+  navigator.vibrate([200, 100, 200]);
+}
+
+// Сообщаем wrapper, чтобы показать локальное уведомление
+notifyWrapperIncomingCall({
+  fromUser: incomingCall.from,
+  title: 'Входящий звонок',
+  body: `Звонит: ${incomingCall.caller_username}`,
+});
 
   // Никакого автоответа — ждём действий пользователя
 }
