@@ -1,3 +1,25 @@
+// [ADD at very top of app.js] Глобальные хендлеры ошибок для стабильности в WebView/iframe
+window.addEventListener('error', (e) => {
+  // Не даём необработанной ошибке «завалить» WebView
+  console.error('[GLOBAL ERROR]', e.error || e.message || e);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  // Подавляем необработанные промисы
+  event.preventDefault?.();
+  console.error('[UNHANDLED REJECTION]', event.reason);
+});
+
+
+
+
+
+
+
+
+
+
+
 // API Configuration
 const API_BASE = "/api";
 let authToken = localStorage.getItem("authToken");
@@ -382,6 +404,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Service Worker Registration
 async function initServiceWorker() {
+
+    // Если приложение запущено внутри iframe/wrapper — не регистрируем SW
+    if (window.top !== window) {
+      console.log('[SW] Skip Service Worker registration inside iframe/wrapper');
+      return;
+    }
   if ("serviceWorker" in navigator) {
     try {
       const registration = await navigator.serviceWorker.register(
@@ -443,12 +471,15 @@ async function checkAuth() {
       await fetchUserInfo();
       console.log("Authentication successful");
     } catch (error) {
-      // fetchUserInfo already handles showing login screen on error
-      // But ensure we're showing it if not on invite page
       console.error("Authentication check failed:", error);
+      // На любой сбой авторизации — чистим токен, чтобы не повторять /me с битым токеном
+      localStorage.removeItem("authToken");
+      authToken = null;
+      currentUser = null;
+    
       const path = window.location.pathname;
       const inviteMatch = path.match(/\/invite\/([a-f0-9-]+)/i);
-      if (!inviteMatch && !currentUser) {
+      if (!inviteMatch) {
         console.log("Showing login screen due to auth failure");
         showScreen("login-screen");
       }
@@ -457,6 +488,8 @@ async function checkAuth() {
     }
   } else {
     console.log("No token found in localStorage");
+    localStorage.removeItem("authToken"); // [ADD] на всякий случай подчистить
+    authToken = null;
     // Check if we're on an invite page - handle that first
     const path = window.location.pathname;
     const inviteMatch = path.match(/\/invite\/([a-f0-9-]+)/i);
@@ -830,21 +863,17 @@ async function fetchUserInfo() {
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        // Token is invalid, clear it
-        console.log("Token invalid (401), clearing auth");
-        localStorage.removeItem("authToken");
-        authToken = null;
-        currentUser = null;
-        showScreen("login-screen");
-        throw new Error("Session expired");
-      }
-      console.error(
-        "Failed to fetch user info:",
+      // Любой не-200 для /me считаем невалидной сессией (в т.ч. 404 record not found)
+      console.warn(
+        "[AUTH] /me failed, clearing token. Status:",
         response.status,
         response.statusText
       );
-      throw new Error("Failed to fetch user info");
+      localStorage.removeItem("authToken");
+      authToken = null;
+      currentUser = null;
+      showScreen("login-screen");
+      throw new Error(`Failed to fetch user info: ${response.status}`);
     }
 
     const userData = await response.json();
@@ -2130,10 +2159,6 @@ async function handleIncomingCall(message) {
     navigator.vibrate([200, 100, 200]);
   }
 // новая фигня для андроида
-  await playRingtone();
-if (navigator.vibrate) {
-  navigator.vibrate([200, 100, 200]);
-}
 
 // Сообщаем wrapper, чтобы показать локальное уведомление
 notifyWrapperIncomingCall({
