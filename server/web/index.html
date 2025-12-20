@@ -238,6 +238,39 @@
             </div>
           </section>
 
+
+          <!-- Contact Card Modal -->
+<div id="contact-card-modal" class="modal">
+  <div class="modal-content">
+    <div class="contact-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+      <h3 id="contact-card-name" style="margin: 0;"></h3>
+      <button
+        id="close-contact-card-btn"
+        type="button"
+        class="btn btn-secondary"
+        aria-label="Close"
+        title="Close">
+        ×
+      </button>
+    </div>
+
+    <div class="contact-card-body" style="margin-top: 0.75rem;">
+      <div class="contact-card-row" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <span id="contact-card-status">⚫ Offline</span>
+        <span id="contact-card-push" style="opacity: 0.6;">🔕 Push</span>
+      </div>
+
+      <div class="contact-card-actions" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+        <button id="contact-card-resend-btn" class="btn btn-secondary" type="button" title="Resend Invite">📤</button>
+        <button id="contact-card-call-audio-btn" class="btn btn-primary" type="button" title="Audio Call">📞</button>
+        <button id="contact-card-call-video-btn" class="btn btn-primary" type="button" title="Video Call">📹</button>
+        <button id="contact-card-rename-btn" class="btn btn-secondary" type="button" title="Rename">✏️</button>
+        <button id="contact-card-delete-btn" class="btn btn-secondary" type="button" title="Delete">🗑️</button>
+      </div>
+    </div>
+  </div>
+</div>
+
           <!-- Add Contact Modal -->
           <div id="add-contact-modal" class="modal">
             <div class="modal-content">
