@@ -2129,7 +2129,7 @@ async function handleIncomingCall(message) {
     // паттерн: 200ms вибрации, 100ms пауза — повторится системой только 1 раз
     navigator.vibrate([200, 100, 200]);
   }
-
+// новая фигня для андроида
   await playRingtone();
 if (navigator.vibrate) {
   navigator.vibrate([200, 100, 200]);
